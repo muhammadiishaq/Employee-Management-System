@@ -1,0 +1,73 @@
+@Library("book") _
+pipeline{
+    agent{label "slave2"}
+    stages{
+        stage("code clone"){
+            steps{
+                echo "cloning the code "
+                git url: "https://github.com/On-cloud7/ems.git", branch: "main"
+                echo "code cloned"
+            }
+        }
+        
+        stage("installing tools "){
+            steps{
+                echo "installing docker "
+                sh """ 
+                curl -LO https://raw.githubusercontent.com/addico786/tools_download_scripts/master/docker.sh
+                sudo chmod +x docker.sh
+                ./docker.sh
+
+                """
+                sh """ 
+                curl -LO https://raw.githubusercontent.com/addico786/tools_download_scripts/master/trivy.sh
+                sudo chmod +x trivy.sh
+                ./trivy.sh
+                """
+                echo "trivy installed"
+                echo "docker installed "
+            }
+        }
+        stage("building images"){
+            steps{
+                echo "building docker images"
+                sh " docker rmi -f app:latest || true "
+                docker_build("app","latest",".")
+                echo "docker built image"
+            }
+        }
+        stage("image scan"){
+            steps{
+                echo "scanning image"
+                sh "trivy image app:latest"
+                echo "scan complete "
+            }
+        }
+        stage("network_create"){
+            steps{
+                echo "network create"
+                sh "docker network disconnect django app_cont || true "
+                sh "docker network disconnect django nginx_cont || true"
+                sh "docker network rm django || true "
+                docker_network("django")
+            }
+        }
+        stage("container create"){
+            steps{
+                echo "creating the container"
+                sh "docker rm -f app_cont || true "
+                docker_run("8000:8000","app_cont","django","app:latest")
+            }
+        }
+        
+        stage("nginx config"){
+            steps{
+                echo "building the code "
+                sh "docker rm -f nginx_cont || true"
+                docker_build("nginx","latest","./nginx")
+                docker_run("80:80","nginx_cont","django","nginx:latest")
+                echo "running the container "
+            }
+        }
+    }
+}

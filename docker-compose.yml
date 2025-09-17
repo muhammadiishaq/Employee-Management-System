@@ -1,0 +1,5 @@
+services :
+  web :
+     image : app:latest
+     ports :
+         - "8000:8000"
