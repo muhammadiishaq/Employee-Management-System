@@ -1,46 +1,58 @@
-@Library("book") _
-pipeline{
-    agent{label "slave2"}
-    stages{
-        stage("code clone"){
-            steps{
-                echo "cloning the code "
-                git url: "https://github.com/On-cloud7/ems.git", branch: "main"
+@Library("most_use_labraries") _
+pipeline {
+    agent { label "ec2_agent" }
+    stages {
+        stage("code clone") {
+            steps {
+                echo "cloning the code"
+                git url: "https://github.com/muhammadiishaq/Employee-Management-System.git", branch: "main"
                 echo "code cloned"
             }
         }
-        
-        stage("installing tools "){
-            steps{
-                echo "installing docker "
-                sh """ 
+        stage("Installing tools Docker and trviy...") {
+            steps {
+                echo "Installing Docker tools"
+                sh """
                 curl -LO https://raw.githubusercontent.com/addico786/tools_download_scripts/master/docker.sh
                 sudo chmod +x docker.sh
-                ./docker.sh
-
+                ./docker.sh                
                 """
-                sh """ 
+                
+                echo "Installing Trivy tools"
+                sh """
                 curl -LO https://raw.githubusercontent.com/addico786/tools_download_scripts/master/trivy.sh
                 sudo chmod +x trivy.sh
                 ./trivy.sh
                 """
-                echo "trivy installed"
-                echo "docker installed "
+                echo "Docker and Trivy are Installed....!"
             }
         }
-        stage("building images"){
-            steps{
+        stage("Building Images") {
+            steps {
                 echo "building docker images"
-                sh " docker rmi -f app:latest || true "
-                docker_build("app","latest",".")
+                sh "docker rmi -f app:latest || true"
+                docker_build("app", "latest", ".")
                 echo "docker built image"
             }
         }
-        stage("image scan"){
-            steps{
+        stage("Image Scan..") {
+            steps {
                 echo "scanning image"
                 sh "trivy image app:latest"
-                echo "scan complete "
+                echo "scan complete"
+            }
+        }
+        stage("push image") {
+            steps {
+                echo "pushing image to DockerHub"
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh """
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker tag app:latest $DOCKER_USER/app:latest
+                        docker push $DOCKER_USER/app:latest
+                    """
+                    echo "image pushed successfully"
+                }
             }
         }
         stage("network_create"){
@@ -70,4 +82,4 @@ pipeline{
             }
         }
     }
-}
+}  
