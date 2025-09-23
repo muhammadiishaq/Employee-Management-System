@@ -14,7 +14,6 @@ variable "instance_type" {
   type    = string
 }
 
-
 variable "volume_size" {
   default = 8
   type    = number
@@ -23,4 +22,5 @@ variable "volume_size" {
 variable "volume_type" {
   default = "gp3"
   type    = string
+
 }
